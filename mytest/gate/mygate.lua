@@ -83,6 +83,7 @@ end
 local CMD = {}
 
 function CMD.forward(source, fd, client, address)
+	skynet.error(string.format("mygate forward"),client)
 	local c = assert(connection[fd])
 	unforward(c)
 	c.client = client or 0
@@ -100,6 +101,16 @@ end
 
 function CMD.kick(source, fd)
 	skynet.error("mygate client kick ")
+	gateserver.closeclient(fd)
+end
+
+function CMD.openclient(source, fd)
+	skynet.error("mygate client openclient ")
+	gateserver.closeclient(fd)
+end
+
+function CMD.closeclient(source, fd)
+	skynet.error("mygate client closeclient ")
 	gateserver.closeclient(fd)
 end
 

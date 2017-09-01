@@ -1,17 +1,63 @@
 local skynet = require "skynet"
 local netpack = require "skynet.netpack"
-local socketdriver = require "skynet.socketdriver"
-local socket
+local cjson = require "cjson"
+local proto = require "proto.proto"
+local utils = require "utils.utils"
+local socket = require "skynet.socket"
+
+local gate = nil
 local CMD = {}
 local SOCKET = {}
-local gate
 local agent = {}
+
+local function send_package(pack)
+	local json = cjson.encode(pack)
+	local package = string.pack(">s2", json)
+	socket.write(client_fd, package)
+end
+
+local function recv_data(tbData)
+	if tbData and tbData.cmd then
+		local cmdName = proto.c2s[tbData.cmd] 
+		if cmdName and cmdName == "auth" then
+			skynet.error("support client request",cmdName)
+			local f = REQUEST[cmdName]
+			local response = f(tbData.token)
+			if response then
+				send_package(response)
+			end
+			skynet.error("unsupport client request function")
+			socket.close_fd(client_fd)
+		else
+			skynet.error("unsupport client request",tbData.cmd)
+		end
+	else
+		socket.close_fd(client_fd)
+		skynet.error("client data error")
+	end
+end
+
+-- 对已分包数据进行解包
+skynet.register_protocol {
+	name = "client",
+	id = skynet.PTYPE_CLIENT,
+	unpack = function (msg, sz)
+		-- 解包
+		local json = skynet.tostring(msg,sz) 
+		return cjson.decode(json)
+	end,
+	dispatch = function(_, _,tbData,...)
+		--分发协议数据
+		recv_data(tbData)
+	end
+}
+
 
 function SOCKET.open(fd, addr)
 	skynet.error("watchdog client connect: " .. addr)
-	--agent[fd] = skynet.newservice("agent")
-	--skynet.call(agent[fd], "lua", "start", { gate = gate, client = fd, watchdog = skynet.self() })
-	socketdriver.start(fd)
+	agent[fd] = skynet.newservice("agent")
+	skynet.call(agent[fd], "lua", "start", { gate = gate, client = fd, watchdog = skynet.self() })
+	--skynet.call(gate, "lua", "forward", fd)
 end
 
 local function close_agent(fd)
