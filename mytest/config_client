@@ -1,0 +1,63 @@
+root        = "./"
+approot     ="../mytest/"
+thread      = 8
+harbor      = 0
+logger      = nil
+logpath     = "."
+start       = "main_client"                                    		--由luaservice指定
+bootstrap   = "snlua bootstrap"
+profile     = false
+lualoader   = root .."lualib/loader.lua"
+
+luaservice  = root.."examples/?.lua;"         
+luaservice  = root .."service/?.lua;"..luaservice 
+luaservice  = approot.."?.lua;"..luaservice             		-- 启动自己的主节点main.lua
+luaservice  = approot.."gate/?.lua;"..luaservice             		-- 启动自己的主节点main.lua
+luaservice  = approot.."agent/?.lua;"..luaservice             		-- 启动自己的主节点main.lua
+luaservice  = approot.."opcache/?.lua;"..luaservice             		-- 启动自己的主节点main.lua
+luaservice  = approot.."login/?.lua;"..luaservice             		-- 启动自己的主节点main.lua
+luaservice  = approot.."client/?.lua;"..luaservice             		-- 启动自己的主节点main.lua
+ 
+
+cpath       = root .."cservice/?.so"
+lua_cpath   = root .."luaclib/?.so"                     		-- windows端将cjson集成到源码
+
+lua_path    = root .."lualib/?.lua;"
+lua_path    = approot .."?.lua;"..lua_path
+
+
+
+-------main  config
+debug_console_port                              = 7001
+httplogin_port                                  = 7002
+gate_port                                       = 7003
+
+
+game_host                                       = "192.168.2.99"
+game_port                                       = 6004
+
+
+
+--------mysql config
+mysql_host                                     = "192.168.2.99"
+mysql_port                                     = 3306
+mysql_database                                 = "king_flower"
+mysql_user                                     = "root"
+mysql_password                                 = "123456"
+
+--------redis config
+--redis_host                                     = "192.168.2.99"
+redis_port                                     = 6379
+redis_db                                       = 0
+redis_auth                                     = "123456"
+
+---playerbaseinfo config
+
+agentpool_min_size                              = 20
+precreate_check_interval                        = 1              ----检查间隔
+check_idle_accumulated                          = 0
+persistent_accumulated                          = 0
+recycle_accumulated                             = 0
+agent_checkidle_interval                        = 60
+
+

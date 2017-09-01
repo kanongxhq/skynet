@@ -99,6 +99,9 @@ function httpc.request(method, host, url, recvheader, header, content)
 	if async_dns and not hostname:match(".*%d+$") then
 		hostname = dns.resolve(hostname)
 	end
+
+	
+	print(string.format("httpc hostname:%s,port:%d",hostname,port))
 	local fd = socket.connect(hostname, port, timeout)
 	local finish
 	if timeout then
