@@ -52,7 +52,7 @@ struct uncomplete {
 	struct netpack pack;
 	struct uncomplete * next;
 	int read;
-	int header;
+	uint8_t header[HEADSIZE];
 };
 
 struct queue {
@@ -209,7 +209,7 @@ push_more(lua_State *L, int fd, uint8_t *buffer, int size) {
 	if (size <= HEADSIZE) { //包头大小
 		struct uncomplete * uc = save_uncomplete(L, fd);
 		uc->read = size;
-		uc->header = *buffer;
+		memcpy(uc->header, buffer, size);
 		return ;
 	}
 	int pack_size = read_size(buffer);
@@ -302,7 +302,7 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		if (size <= HEADSIZE) { //包头大小
 			struct uncomplete * uc = save_uncomplete(L, fd);
 			uc->read = size;
-			uc->header = *buffer;
+			memcpy(uc->header, buffer, size);
 			return 1;
 		}
 		//解析包头
