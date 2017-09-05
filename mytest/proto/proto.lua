@@ -4,8 +4,7 @@ proto.c2s = {
 	[10000] = "handshake",
 	[10001] = "auth",
 	[10002] = "logout",
-	[10003] = "quit",
-	[10004] = "chat",
+	[10003] = "chat",
 } 
 
 local c2s = {}
@@ -18,10 +17,10 @@ for k,v in pairs(c2s) do
 end
 
 proto.s2c = {
-	[10000] = "handshake",
-	[10001] = "auth_resp",
-	[10002] = "logoutresp",
-	[10004] = "chat",
+	[50000] = "handshake",
+	[50001] = "auth_resp",
+	[50002] = "logout_resp",
+	[50003] = "chat",
 } 
 
 local s2c = {}

@@ -6,8 +6,23 @@ local cjson = require "cjson"
 local utils = require "utils.utils"
 
 local last = ""
+
+function string.bytes(str)
+    local result = ""
+    for i = 1,#str do
+        if i == 1 then
+            result = string.format("%03d",string.byte(str,i))
+        else
+            result = string.format("%s %03d",result,string.byte(str,i))
+        end
+        
+    end
+    return result
+end
 local function send_package(fd, pack)
+    skynet.error("send_package:"..string.bytes(pack))
     local package = string.pack(">s2", pack)
+    skynet.error("send_package:"..string.bytes(package))
     socket.write(fd, package)
 end
 

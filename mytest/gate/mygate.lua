@@ -69,7 +69,7 @@ end
 
 -- 收到客户端数据 
 function handler.message(fd, msg, sz)
-	skynet.error(string.format("mygate message %d", sz))
+	--skynet.error(string.format("mygate message %d", sz))
 	-- recv a package, forward it
 	local c = connection[fd]
 	local agent = c.agent
@@ -83,7 +83,7 @@ end
 local CMD = {}
 
 function CMD.forward(source, fd, client, address)
-	skynet.error(string.format("mygate forward"),client)
+	skynet.error("mygate","forward",fd)
 	local c = assert(connection[fd])
 	unforward(c)
 	c.client = client or 0
@@ -100,17 +100,18 @@ function CMD.accept(source, fd)
 end
 
 function CMD.kick(source, fd)
-	skynet.error("mygate client kick ")
+	--skynet.error("mygate client kick "..fd)
+	close_fd(fd)
 	gateserver.closeclient(fd)
 end
 
 function CMD.openclient(source, fd)
-	skynet.error("mygate client openclient ")
-	gateserver.closeclient(fd)
+	--skynet.error("mygate client openclient "..fd)
+	gateserver.openclient(fd)
 end
 
 function CMD.closeclient(source, fd)
-	skynet.error("mygate client closeclient ")
+	--skynet.error("mygate client closeclient "..fd)
 	gateserver.closeclient(fd)
 end
 
