@@ -51,7 +51,6 @@ struct netpack {
 struct uncomplete {
 	struct netpack pack;
 	struct uncomplete * next;
-	int read;
 	uint8_t header[HEADSIZE];
 };
 
@@ -208,21 +207,21 @@ static void
 push_more(lua_State *L, int fd, uint8_t *buffer, int size) {
 	if (size <= HEADSIZE) { //包头大小
 		struct uncomplete * uc = save_uncomplete(L, fd);
-		uc->read = size;
+		uc->pack.size = size;
 		memcpy(uc->header, buffer, size);
 		return ;
 	}
-	int pack_size = read_size(buffer);
+	int body_size = read_size(buffer);
+	int pack_size = HEADSIZE + body_size;
 	int key = buffer[5];
 	buffer += HEADSIZE;
 	size -= HEADSIZE;
 
 	if (size < pack_size) {
 		struct uncomplete * uc = save_uncomplete(L, fd);
-		uc->read = size;
-		uc->pack.size = pack_size;
 		uc->pack.buffer = skynet_malloc(pack_size);
 		memcpy(uc->pack.buffer, buffer, size);
+		uc->pack.size = size;
 		return;
 	}
 	decrypt(buffer,pack_size,key);
@@ -251,40 +250,38 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 	struct uncomplete * uc = find_uncomplete(q, fd);
 	if (uc) {
 		// fill uncomplete
-		if (uc->read + size <= HEADSIZE) {
-			memcpy(uc->header + uc->read, buffer, size);
-			uc->read += size;
+		if (uc->pack.size + size <= HEADSIZE) {
+			memcpy(uc->header + uc->pack.size, buffer, size);
+			uc->pack.size += size;
 			int h = hash_fd(fd);
 			uc->next = q->hash[h];
 			q->hash[h] = uc;
 			return 1;
 		}
-		
-		if(uc->pack.size == 0 && uc->read <= HEADSIZE && uc->read + size > HEADSIZE){
-			memcpy(uc->header + uc->read, buffer, HEADSIZE - uc->read);
-			int pack_size = read_size(uc->header);
-			uc->pack.size = pack_size;
+		int pack_size = 0;
+		int body_size = 0;
+		if(uc->pack.size <= HEADSIZE && uc->pack.size + size > HEADSIZE){
+			memcpy(uc->header + uc->pack.size, buffer, HEADSIZE - uc->pack.size);
+			int body_size = read_size(uc->header);
+			pack_size = HEADSIZE + body_size;
 			uc->pack.buffer = skynet_malloc(pack_size);
-
-			buffer += HEADSIZE - uc->read;
-			size -= HEADSIZE - uc->read;
-			uc->read = 0;
+			memcpy(uc->pack.buffer, uc->header, uc->pack.size);
 		}
 		uint8_t key = uc->header[5];
-		int need = uc->pack.size - uc->read;
-		if (size < need) {
-			memcpy(uc->pack.buffer + uc->read, buffer, size);
-			uc->read += size;
+		int need = pack_size - uc->pack.size;
+		if (size  < need) {
+			memcpy(uc->pack.buffer + uc->pack.size, buffer, size);
+			uc->pack.size += size;
 			int h = hash_fd(fd);
 			uc->next = q->hash[h];
 			q->hash[h] = uc;
 			return 1;
 		}
-		memcpy(uc->pack.buffer + uc->read, buffer, need);
+		memcpy(uc->pack.buffer + uc->pack.size, buffer, need);
 		buffer += need;
 		size -= need;
 		if (size == 0) {
-			decrypt(uc->pack.buffer,uc->pack.size,key);
+			decrypt(uc->pack.buffer[HEADSIZE],body_size,key);
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			lua_pushlightuserdata(L, uc->pack.buffer);
@@ -301,28 +298,24 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 	} else {
 		if (size <= HEADSIZE) { //包头大小
 			struct uncomplete * uc = save_uncomplete(L, fd);
-			uc->read = size;
+			uc->pack.size = size;
 			memcpy(uc->header, buffer, size);
 			return 1;
 		}
 		//解析包头
-		int pack_size = read_size(buffer);
-		uint8_t key = (uint8_t)buffer[5];
-		buffer+=HEADSIZE;
-		size-=HEADSIZE;
-
+		int body_size = read_size(buffer);
+		int pack_size = HEADSIZE + body_size;
 		if (size < pack_size) {
 			struct uncomplete * uc = save_uncomplete(L, fd);
-			uc->read = size;
 			uc->pack.size = pack_size;
 			uc->pack.buffer = skynet_malloc(pack_size);
-			memcpy(uc->pack.buffer, buffer, size);
+			memcpy(uc->pack.buffer, buffer, pack_size);
 			return 1;
 		}
+		uint8_t key = (uint8_t)buffer[5];
 		if (size == pack_size) {
 			// just one package
-			decrypt(buffer,size,key);
-
+			decrypt(buffer[HEADSIZE],body_size,key);
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			void * result = skynet_malloc(pack_size);

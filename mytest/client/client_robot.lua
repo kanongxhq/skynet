@@ -4,7 +4,7 @@ local socket = require "skynet.socket"
 local httpc = require "http.httpc"
 local cjson = require "cjson"
 local utils = require "utils.utils"
-
+local HEADSIZE = 11
 local last = ""
 
 function string.bytes(str)
@@ -19,24 +19,32 @@ function string.bytes(str)
     end
     return result
 end
-local function send_package(fd, pack)
+local function send_package(fd,cmd,pack)
+    if not cmd then
+        return 
+    end
     skynet.error("send_package:"..string.bytes(pack))
-    local package = string.pack(">s2", pack)
+    local body_size = #pack
+    local version = 0
+    local key = math.rand(0,255)
+    local flag = 1
+    local pNo = 0
+    local package = string.pack("<HBHBBI4s",body_size,version,cmd, key,flag,pNo,pack)
     skynet.error("send_package:"..string.bytes(package))
     socket.write(fd, package)
 end
 
 local function unpack_package(text)
     local size = #text
-    if size < 2 then
+    if size < HEADSIZE then
         return nil, text
     end
-    local s = text:byte(1) * 256 + text:byte(2)
-    if size < s + 2 then
+    local s = text:byte(2) * 256 + text:byte(1)
+    if size < s + HEADSIZE then
         return nil, text
     end
 
-    return text:sub(3, 2 + s), text:sub(3 + s)
+    return text:sub(1, s + HEADSIZE), text:sub(s + HEADSIZE + 1)
 end
 
 local function recv_package(fd,last)
@@ -58,7 +66,7 @@ local function send_request(fd,args)
     session = session + 1
     local str = cjson.encode(args)
     skynet.error("send_request ", str)
-    send_package(fd, str)
+    send_package(fd,args.cmd,str)
 end
 
 

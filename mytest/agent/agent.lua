@@ -19,7 +19,12 @@ user_data.is_online = false
 
 local function send_package(pack)
 	local json = cjson.encode(pack)
-	local package = string.pack(">s2", json)
+	local body_size = #pack
+    local version = 0
+    local key = math.rand(0,255)
+    local flag = 1
+    local pNo = 0
+    local package = string.pack("<HBHBBI4s",body_size,version,pack.cmd,key,flag,pNo,pack)
 	socket.write(user_data.fd, package)
 end
 
