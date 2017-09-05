@@ -281,7 +281,7 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		buffer += need;
 		size -= need;
 		if (size == 0) {
-			decrypt(uc->pack.buffer[HEADSIZE],body_size,key);
+			decrypt((uint8_t*)uc->pack.buffer[HEADSIZE],body_size,key);
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			lua_pushlightuserdata(L, uc->pack.buffer);
@@ -315,7 +315,7 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		uint8_t key = (uint8_t)buffer[5];
 		if (size == pack_size) {
 			// just one package
-			decrypt(buffer[HEADSIZE],body_size,key);
+			decrypt((uint8_t*)buffer[HEADSIZE],body_size,key);
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			void * result = skynet_malloc(pack_size);
