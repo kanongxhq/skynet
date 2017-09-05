@@ -213,7 +213,7 @@ push_more(lua_State *L, int fd, uint8_t *buffer, int size) {
 		return ;
 	}
 	int pack_size = read_size(buffer);
-	int key = buffer[5]
+	int key = buffer[5];
 	buffer += HEADSIZE;
 	size -= HEADSIZE;
 
@@ -225,7 +225,7 @@ push_more(lua_State *L, int fd, uint8_t *buffer, int size) {
 		memcpy(uc->pack.buffer, buffer, size);
 		return;
 	}
-	decrypt(buffer,pack_size,key)
+	decrypt(buffer,pack_size,key);
 	push_data(L, fd, buffer, pack_size, 1);
 
 	buffer += pack_size;
