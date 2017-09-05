@@ -200,7 +200,7 @@ read_size(uint8_t * buffer) {
 	int r = (int)buffer[0] << 8 | (int)buffer[1];
 #else
 	int r = (int)buffer[1] << 8 | (int)buffer[0];
-#end
+#endif
 	return r;
 }
 
@@ -266,11 +266,11 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 			uc->pack.size = pack_size;
 			uc->pack.buffer = skynet_malloc(pack_size);
 
-			buffer += HEADSIZE - uc->read
-			size -= HEADSIZE - uc->read
+			buffer += HEADSIZE - uc->read;
+			size -= HEADSIZE - uc->read;
 			uc->read = 0;
 		}
-		uint8_t key = uc->header[5]
+		uint8_t key = uc->header[5];
 		int need = uc->pack.size - uc->read;
 		if (size < need) {
 			memcpy(uc->pack.buffer + uc->read, buffer, size);
@@ -284,7 +284,7 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		buffer += need;
 		size -= need;
 		if (size == 0) {
-			decrypt(uc->pack.buffer,uc->pack.size,key)
+			decrypt(uc->pack.buffer,uc->pack.size,key);
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			lua_pushlightuserdata(L, uc->pack.buffer);
@@ -307,7 +307,7 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		}
 		//解析包头
 		int pack_size = read_size(buffer);
-		uint8_t key = (uint8_t)buffer[5]
+		uint8_t key = (uint8_t)buffer[5];
 		buffer+=HEADSIZE;
 		size-=HEADSIZE;
 
@@ -321,7 +321,7 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		}
 		if (size == pack_size) {
 			// just one package
-			decrypt(buffer,size,key)
+			decrypt(buffer,size,key);
 
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
