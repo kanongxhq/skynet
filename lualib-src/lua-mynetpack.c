@@ -28,14 +28,14 @@
 
 void encrypt(unsigned char *pBuffer, int nSize){
 	assert(nSize > HEADSIZE);
-	uint8_t key = pBuffer[5];
+	uint8_t bKey = pBuffer[5];
 	for (int i = 0; i<nSize; ++i)
 		pBuffer[i] = ((pBuffer[i]) ^ bKey) + bKey;
 }
 
 void decrypt(unsigned char *pBuffer, int nSize){
 	assert(nSize > HEADSIZE);
-	uint8_t key = pBuffer[5];
+	uint8_t bKey = pBuffer[5];
 	for (int i = 0; i<nSize; ++i)
 		pBuffer[i] = (pBuffer[i] - bKey) ^ bKey;
 }
@@ -494,9 +494,9 @@ ltostring(lua_State *L) {
 static int
 lencrypt(lua_State *L) {
 	size_t size = 0;
-	const char* data = (const char*)lua_tolstring(tolua_S, 1, &size);
+	const char* data = (const char*)lua_tolstring(L, 1, &size);
 	if (NULL != data || size > 0) {
-		encrypt(data,size)
+		encrypt(data,size);
 		lua_pushlstring(L,data, size);
 	} else {
 		lua_pushliteral(L, "");
@@ -507,9 +507,9 @@ lencrypt(lua_State *L) {
 static int
 ldecrypt(lua_State *L) {
 	size_t size = 0;
-	const char* data = (const char*)lua_tolstring(tolua_S, 1, &size);
+	const char* data = (const char*)lua_tolstring(L, 1, &size);
 	if (NULL != data || size > 0) {
-		decrypt(data,size)
+		decrypt(data,size);
 		lua_pushlstring(L,data, size);
 	} else {
 		lua_pushliteral(L, "");
