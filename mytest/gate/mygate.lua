@@ -2,6 +2,7 @@ local skynet = require "skynet"
 local gateserver = require "gate.mygateserver"
 local netpack = require "skynet.netpack"
 local proto = require "proto.proto"
+local utils = require "utils.utils"
 
 local watchdog 
 local connection = {}	-- fd -> connection : { fd , client, agent , ip, mode }
@@ -39,7 +40,7 @@ end
 
 -- 客户端 连接成功回调
 function handler.connect(fd, addr)
-	skynet.error(string.format("mygate client connect %s", addr))
+	--skynet.error(string.format("mygate client connect %s", addr))
 	local c = {
 		fd = fd,
 		ip = addr,
@@ -75,20 +76,18 @@ function handler.message(fd, msg, sz)
 	local c = connection[fd]
 	local agent = c.agent
 
-	local package = skynet.tostring(msg,sz)
-	local cmd,body = proto.unpack(package)
-
 	if agent then
-		skynet.redirect(agent, c.client, "client", 0, cmd,body) -- 客户端代理服务发送client消息
+		skynet.redirect(agent, c.client, "client", 0, msg, sz) -- 客户端代理服务发送client消息
 	else
-		skynet.send(watchdog, "lua", "socket", "data", fd,cmd,body)
+		
+		skynet.send(watchdog, "lua", "socket", "data", fd,msg, sz)
 	end
 end
 
 local CMD = {}
 
 function CMD.forward(source, fd, client, address)
-	skynet.error("mygate","forward",fd)
+	--skynet.error("mygate","forward",fd)
 	local c = assert(connection[fd])
 	unforward(c)
 	c.client = client or 0
@@ -98,7 +97,7 @@ function CMD.forward(source, fd, client, address)
 end
 
 function CMD.accept(source, fd)
-	skynet.error("mygate accept")
+	--skynet.error("mygate accept")
 	local c = assert(connection[fd])
 	unforward(c)
 	gateserver.openclient(fd)

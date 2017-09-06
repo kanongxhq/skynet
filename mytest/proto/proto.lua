@@ -17,11 +17,11 @@ end
 
 --对带有包头的已解密数据包进行解包，返回协议号和包体
 function proto.unpack(pack)
-	if #pack <proto.HEADSIZE then
-		return
+	if #pack < proto.HEADSIZE then
+		return nil,nil
 	else
 		local cmd = pack:byte(5)*256 + pack:byte(4)
-		local body = pack.sub(proto.HEADSIZE + 1)
+		local body = pack:sub(proto.HEADSIZE + 1,-1)
 		return cmd,body
 	end
 end
@@ -42,8 +42,9 @@ end
 proto.c2s = {
 	[10000] = "handshake",
 	[10001] = "auth",
-	[10002] = "logout",
-	[10003] = "chat",
+	[10002] = "login",
+	[10003] = "logout",
+	[10004] = "chat",
 } 
 
 local c2s = {}
@@ -58,8 +59,9 @@ end
 proto.s2c = {
 	[50000] = "handshake",
 	[50001] = "auth_resp",
-	[50002] = "logout_resp",
-	[50003] = "chat",
+	[50002] = "login_resp",
+	[50003] = "logout_resp",
+	[50004] = "chat",
 } 
 
 local s2c = {}

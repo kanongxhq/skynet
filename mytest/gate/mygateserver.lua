@@ -135,7 +135,6 @@ function gateserver.start(handler)
 			return netpack.filter( queue, msg, sz)
 		end,
 		dispatch = function (_, _, q, type, ...)
-            skynet.error("mygateserver",type)
 			queue = q
 			if type then
 				MSG[type](...)

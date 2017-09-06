@@ -62,7 +62,7 @@ local function handle(id)
 		return
 	end 
 	local path,query = urlutils.parse(url)
-	skynet.error("client req url:"..url)
+	skynet.error("loginagent","client req url:"..url)
 	if path == "register" then
 		response(id,200,register(id,urlutils.parse_query(query)))
 	elseif path == "login" then

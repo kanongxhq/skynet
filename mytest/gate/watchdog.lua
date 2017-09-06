@@ -13,7 +13,8 @@ local fd_agent = {}
 local ud_agent = {}
 
 local function send_package(fd,cmd,body)
-	local json = cjson.encode(body)
+	body = cjson.encode(body)
+	--skynet.error("watchdog","send_package "..body)
 	local package = proto.pack(cmd,body)
 	proto.encrypt(package)
 	socket.write(fd, package)
@@ -84,9 +85,12 @@ function SOCKET.warning(fd, size)
 	skynet.error("watchdog client warning: "..fd)
 end
 
-function SOCKET.data(fd, cmd,body)
-	skynet.error("watchdog client data: "..utils.bytes(body))
-	recv_data(cmd,body)
+function SOCKET.data(fd, msg,sz)
+	--skynet.error("watchdog client data: "..utils.bytes(body))
+	local package = skynet.tostring(msg,sz)
+	skynet.error("watchdog",string.format("client[%d] data:%s",fd,utils.bytes(package)))
+	local cmd,body = proto.unpack(package)
+	recv_data(fd,cmd,body)
 end
 
 function REQUEST.auth(fd,body)
@@ -107,14 +111,42 @@ function REQUEST.auth(fd,body)
 	end
 
 	if ud_agent[ud] then
-		skynet.error("watchdog","ud_agent[1000] exist")
+		skynet.error("watchdog",string.format("ud_agent[%d] reconnect",ud))
 		fd_agent[fd] = ud_agent[ud]
 	else
-		skynet.error("watchdog","need to new ud_agent[1000]")
+		skynet.error("watchdog",string.format("ud_agent[%d] connect",ud))
 		fd_agent[fd] = skynet.newservice("agent")
 		ud_agent[ud] = fd_agent[fd]
 	end
-	skynet.error("watchdog",string.format("create agent %d",ud_agent[ud]))
+	skynet.call(fd_agent[fd], "lua", "start", { gate = gate, client = fd, watchdog = skynet.self(),user_id = ud })
+	return cmd,{cmd = cmd, code = 0, msg = "auth success"}
+end
+
+function REQUEST.login(fd,body)
+	local token = body.token
+	skynet.error("watchdog auth token:"..token)
+	local cmd = proto.s2c["auth_resp"]
+	if not token or token == "" then
+		return cmd,{cmd = cmd, code = -1, msg = "auth fail"}
+	end 
+	-- 检测token 是否有效
+	if token ~= "123456" then
+		return cmd,{cmd = cmd, code = -1, msg = "invaild token"}
+	end
+	-- 通过token 获取用户id
+	local ud = 1000
+	if not ud then
+		return cmd,{cmd = cmd, code = -1, msg = "invaild token"}
+	end
+
+	if ud_agent[ud] then
+		skynet.error("watchdog",string.format("ud_agent[%d] reconnect",ud))
+		fd_agent[fd] = ud_agent[ud]
+	else
+		skynet.error("watchdog",string.format("ud_agent[%d] connect",ud))
+		fd_agent[fd] = skynet.newservice("agent")
+		ud_agent[ud] = fd_agent[fd]
+	end
 	skynet.call(fd_agent[fd], "lua", "start", { gate = gate, client = fd, watchdog = skynet.self(),user_id = ud })
 	return cmd,{cmd = cmd, code = 0, msg = "auth success"}
 end

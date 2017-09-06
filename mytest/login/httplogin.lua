@@ -11,7 +11,7 @@ skynet.start(function()
 	local balance = 1
 	local id = socket.listen("127.0.0.1",port)
 	socket.start(id,function(_id,addr)
-		skynet.error(string.format("%s connected, pass it to agent :%08x", addr, agent[balance]))
+		skynet.error("httplogin",string.format("%s connected, pass it to agent :%08x", addr, agent[balance]))
 		skynet.send(agent[balance],"lua",_id)
 		balance = balance + 1
 		if balance > #agent then
