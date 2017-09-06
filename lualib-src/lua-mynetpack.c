@@ -29,14 +29,16 @@
 void encrypt(unsigned char *pBuffer, int nSize){
 	assert(nSize > HEADSIZE);
 	uint8_t bKey = pBuffer[5];
-	for (int i = 0; i<nSize; ++i)
+	int i = 0;
+	for (i = 0; i<nSize; ++i)
 		pBuffer[i] = ((pBuffer[i]) ^ bKey) + bKey;
 }
 
 void decrypt(unsigned char *pBuffer, int nSize){
 	assert(nSize > HEADSIZE);
 	uint8_t bKey = pBuffer[5];
-	for (int i = 0; i<nSize; ++i)
+	int i = 0;
+	for (i = 0; i<nSize; ++i)
 		pBuffer[i] = (pBuffer[i] - bKey) ^ bKey;
 }
 
