@@ -67,4 +67,17 @@ function utils.dump(value, desciption, nesting)
     end
 end
 
+function utils.bytes(str,radix)
+    local result = ""
+    for i = 1,#str do
+        if i == 1 then
+            result = string.format("%03d",string.byte(str,i))
+        else
+            result = string.format("%s %03d",result,string.byte(str,i))
+        end
+        
+    end
+    return result
+end
+
 return utils

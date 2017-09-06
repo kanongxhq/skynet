@@ -26,15 +26,17 @@
 #define HEADSIZE 11 //包头大小
 #define ENDIANLITTLE true //接收网络数据的大小端
 
-void encrypt(unsigned char *pBuffer, int nSize, unsigned char bKey){
-	int i;
-	for (i = 0; i<nSize; ++i)
+void encrypt(unsigned char *pBuffer, int nSize){
+	assert(nSize > HEADSIZE);
+	uint8_t key = pBuffer[5];
+	for (int i = 0; i<nSize; ++i)
 		pBuffer[i] = ((pBuffer[i]) ^ bKey) + bKey;
 }
 
-void decrypt(unsigned char *pBuffer, int nSize, unsigned char bKey){
-	int i;
-	for (i = 0; i<nSize; ++i)
+void decrypt(unsigned char *pBuffer, int nSize){
+	assert(nSize > HEADSIZE);
+	uint8_t key = pBuffer[5];
+	for (int i = 0; i<nSize; ++i)
 		pBuffer[i] = (pBuffer[i] - bKey) ^ bKey;
 }
 
@@ -213,7 +215,6 @@ push_more(lua_State *L, int fd, uint8_t *buffer, int size) {
 	}
 	int body_size = read_size(buffer);
 	int pack_size = HEADSIZE + body_size;
-	int key = buffer[5];
 	buffer += HEADSIZE;
 	size -= HEADSIZE;
 
@@ -224,7 +225,7 @@ push_more(lua_State *L, int fd, uint8_t *buffer, int size) {
 		uc->pack.size = size;
 		return;
 	}
-	decrypt(buffer,pack_size,key);
+	decrypt(buffer,pack_size);
 	push_data(L, fd, buffer, pack_size, 1);
 
 	buffer += pack_size;
@@ -267,7 +268,6 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 			uc->pack.buffer = skynet_malloc(pack_size);
 			memcpy(uc->pack.buffer, uc->header, uc->pack.size);
 		}
-		uint8_t key = uc->header[5];
 		int need = pack_size - uc->pack.size;
 		if (size  < need) {
 			memcpy(uc->pack.buffer + uc->pack.size, buffer, size);
@@ -281,7 +281,7 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 		buffer += need;
 		size -= need;
 		if (size == 0) {
-			decrypt(uc->pack.buffer + HEADSIZE,body_size,key);
+			decrypt(uc->pack.buffer,pack_size);
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			lua_pushlightuserdata(L, uc->pack.buffer);
@@ -312,10 +312,9 @@ filter_data_(lua_State *L, int fd, uint8_t * buffer, int size) {
 			memcpy(uc->pack.buffer, buffer, pack_size);
 			return 1;
 		}
-		uint8_t key = (uint8_t)buffer[5];
 		if (size == pack_size) {
 			// just one package
-			decrypt(buffer + HEADSIZE,body_size,key);
+			decrypt(buffer,pack_size);
 			lua_pushvalue(L, lua_upvalueindex(TYPE_DATA));
 			lua_pushinteger(L, fd);
 			void * result = skynet_malloc(pack_size);
@@ -492,6 +491,32 @@ ltostring(lua_State *L) {
 	return 1;
 }
 
+static int
+lencrypt(lua_State *L) {
+	size_t size = 0;
+	const char* data = (const char*)lua_tolstring(tolua_S, 1, &size);
+	if (NULL != data || size > 0) {
+		encrypt(data,size)
+		lua_pushlstring(L,data, size);
+	} else {
+		lua_pushliteral(L, "");
+	}
+	return 1;
+}
+
+static int
+ldecrypt(lua_State *L) {
+	size_t size = 0;
+	const char* data = (const char*)lua_tolstring(tolua_S, 1, &size);
+	if (NULL != data || size > 0) {
+		decrypt(data,size)
+		lua_pushlstring(L,data, size);
+	} else {
+		lua_pushliteral(L, "");
+	}
+	return 1;
+}
+
 LUAMOD_API int
 luaopen_skynet_mynetpack(lua_State *L) {
 	luaL_checkversion(L);
@@ -500,6 +525,8 @@ luaopen_skynet_mynetpack(lua_State *L) {
 		{ "pack", lpack },
 		{ "clear", lclear },
 		{ "tostring", ltostring },
+		{ "encrypt", lencrypt },
+		{ "decrypt", ldecrypt },
 		{ NULL, NULL },
 	};
 	luaL_newlib(L,l);

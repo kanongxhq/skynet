@@ -19,7 +19,7 @@ for i = 1,1000000 do
     table.insert(tb_room_id,i)
 end
 local function gen_room_id()
-    local rand = math.rand(1,#tb_room_id)
+    local rand = math.random(1,#tb_room_id)
     local room_id = tb_room_id[rand]
     table.remove(tb_room_id,rand)
 end
@@ -51,7 +51,7 @@ function REQUEST.enter_room(fd,ud,room_type,room_id)
     else -- 传统场
         local rooms = cht_zhajinhua_room[room_type]
         if rooms and #rooms > 0 then
-            local rand = math.rand(1,#rooms)
+            local rand = math.random(1,#rooms)
             local ret = skynet.call(rooms[rand],"lua","enter_room")
         else
             local room_id = gen_room_id()

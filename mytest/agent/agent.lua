@@ -17,33 +17,29 @@ user_data.fd = 0
 user_data.ud = 0
 user_data.is_online = false
 
-local function send_package(pack)
-	local json = cjson.encode(pack)
-	local body_size = #pack
-    local version = 0
-    local key = math.rand(0,255)
-    local flag = 1
-    local pNo = 0
-    local package = string.pack("<HBHBBI4s",body_size,version,pack.cmd,key,flag,pNo,pack)
+local function send_package(cmd,body)
+	local json = cjson.encode(body)
+	local package = proto.pack(cmd,body)
+	proto.encrypt(package)
 	socket.write(user_data.fd, package)
 end
 
-local function recv_data(tbData)
-	if tbData and tbData.cmd then
-			local cmdName = proto.c2s[tbData.cmd] 
+local function recv_data(cmd,body)
+	if cmd then
+			local cmdName = proto.c2s[cmd] 
 			if cmdName then
 				skynet.error(agent,"support client request",cmdName)
 				local f = REQUEST[cmdName]
 				if f then
-					local response = f(tbData)
+					local cmd,response = f(body)
 					if response then
-						send_package(response)
+						send_package(cmd,response)
 					end
 				else
 					skynet.error(agent,"unsupport client request function")
 				end
 			else
-				skynet.error(agent,"unsupport client request",tbData.cmd)
+				skynet.error(agent,"unsupport client request",cmd)
 			end
 	else
 		skynet.error(agent,"client data error")
@@ -54,14 +50,13 @@ end
 skynet.register_protocol {
 	name = "client",
 	id = skynet.PTYPE_CLIENT,
-	unpack = function (msg, sz)
+	unpack = function (cmd, body)
 		-- 解包
-		local json = skynet.tostring(msg,sz) 
-		return cjson.decode(json)
+		return cmd,body
 	end,
-	dispatch = function(_, _,tbData,...)
+	dispatch = function(_, _,cmd,body,...)
 		--分发协议数据
-		recv_data(tbData)
+		recv_data(cmd,body)
 	end
 }
 

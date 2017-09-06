@@ -8,32 +8,35 @@ local socket = require "skynet.socket"
 local gate = nil
 local CMD = {}
 local SOCKET = {}
+local REQUEST = {}
 local fd_agent = {}
 local ud_agent = {}
 
-local function send_package(fd,pack)
-	local json = cjson.encode(pack)
-	local package = string.pack(">s2", json)
+local function send_package(fd,cmd,body)
+	local json = cjson.encode(body)
+	local package = proto.pack(cmd,body)
+	proto.encrypt(package)
 	socket.write(fd, package)
 end
 
-local function recv_data(fd,tbData)
-	if tbData and tbData.cmd then
-		local cmdName = proto.c2s[tbData.cmd] 
+local function recv_data(fd,cmd,body)
+	local json = cjson.decode(body) 
+	if cmd then
+		local cmdName = proto.c2s[cmd] 
 		if cmdName and cmdName == "auth" then
 			skynet.error("watchdog","support client request",cmdName)
-			local f = CMD[cmdName]
+			local f = REQUEST[cmdName]
 			if f then
-				local response = f(fd,tbData.token)
-				if response then
-					send_package(fd,response)
+				local cmd,body = f(fd,json)
+				if cmd then
+					send_package(fd,cmd,body)
 				end
 			else
 				skynet.error("watchdog","unsupport client request function")
 				skynet.call(gate, "lua", "kick", fd)
 			end
 		else
-			skynet.error("watchdog","unsupport client request",tbData.cmd)
+			skynet.error("watchdog","unsupport client request",cmd)
 			skynet.call(gate, "lua", "kick", fd)
 		end
 	else
@@ -62,8 +65,6 @@ local function kick_agent(fd,ud)
 	end
 end
 
-
-
 function SOCKET.open(fd, addr)
 	skynet.error("watchdog client connect: " .. addr)
 	skynet.call(gate, "lua", "openclient", fd)
@@ -83,35 +84,26 @@ function SOCKET.warning(fd, size)
 	skynet.error("watchdog client warning: "..fd)
 end
 
-function SOCKET.data(fd, msg)
-	skynet.error("watchdog client data: "..msg)
-	local json = cjson.decode(msg) 
-	recv_data(fd,json)
+function SOCKET.data(fd, cmd,body)
+	skynet.error("watchdog client data: "..utils.bytes(body))
+	recv_data(cmd,body)
 end
 
-function CMD.start(conf)
-	skynet.error(string.format("watchdog start %s:%d", conf.address, conf.port))
-	skynet.call(gate, "lua", "open" , conf)
-end
-
-function CMD.kick(fd,ud)
-	skynet.error("watchdog kick client: " .. ud)
-	kick_agent(fd,ud)
-end
-
-function CMD.auth(fd,token)
+function REQUEST.auth(fd,body)
+	local token = body.token
 	skynet.error("watchdog auth token:"..token)
+	local cmd = proto.s2c["auth_resp"]
 	if not token or token == "" then
-		return {cmd = proto.s2c["auth_resp"], code = -1, msg = "auth fail"}
+		return cmd,{cmd = cmd, code = -1, msg = "auth fail"}
 	end 
 	-- 检测token 是否有效
 	if token ~= "123456" then
-		return {cmd = proto.s2c["auth_resp"], code = -1, msg = "invaild token"}
+		return cmd,{cmd = cmd, code = -1, msg = "invaild token"}
 	end
 	-- 通过token 获取用户id
 	local ud = 1000
 	if not ud then
-		return {cmd = proto.s2c["auth_resp"], code = -1, msg = "invaild token"}
+		return cmd,{cmd = cmd, code = -1, msg = "invaild token"}
 	end
 
 	if ud_agent[ud] then
@@ -124,7 +116,17 @@ function CMD.auth(fd,token)
 	end
 	skynet.error("watchdog",string.format("create agent %d",ud_agent[ud]))
 	skynet.call(fd_agent[fd], "lua", "start", { gate = gate, client = fd, watchdog = skynet.self(),user_id = ud })
-	return {cmd = proto.s2c["auth_resp"], code = 0, msg = "auth success"}
+	return cmd,{cmd = cmd, code = 0, msg = "auth success"}
+end
+
+function CMD.start(conf)
+	skynet.error(string.format("watchdog start %s:%d", conf.address, conf.port))
+	skynet.call(gate, "lua", "open" , conf)
+end
+
+function CMD.kick(fd,ud)
+	skynet.error("watchdog kick client: " .. ud)
+	kick_agent(fd,ud)
 end
 
 skynet.start(function()

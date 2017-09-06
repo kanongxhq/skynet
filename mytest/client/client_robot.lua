@@ -4,90 +4,68 @@ local socket = require "skynet.socket"
 local httpc = require "http.httpc"
 local cjson = require "cjson"
 local utils = require "utils.utils"
-local HEADSIZE = 11
 local last = ""
 
-function string.bytes(str)
-    local result = ""
-    for i = 1,#str do
-        if i == 1 then
-            result = string.format("%03d",string.byte(str,i))
-        else
-            result = string.format("%s %03d",result,string.byte(str,i))
-        end
-        
-    end
-    return result
+--加密打包
+local function pack_package(cmd,body)
+    local pack =  proto.pack(cmd,body)
+    skynet.error("pack_package:"..pack[1])
+    skynet.error("pack_package:"..utils.bytes(pack))
+    pack = proto.encrypt(pack)
+    skynet.error("pack_package:"..utils.bytes(pack))
+    return pack
 end
+
+--分包解密
+local function unpack_package(text)
+    local size = #text
+    if size < proto.HEADSIZE then
+        return nil,nil, text
+    end
+    local body_size = text:byte(2) * 256 + text:byte(1)
+    local pack_size = proto.HEADSIZE + body_size 
+    if size < pack_size then
+        return nil,nil, text
+    end
+    local package = text.sub(1,pack_size)
+    local last = text:sub(pack_size + 1)
+    proto.decrypt(package)
+    return proto.unpack(package), last
+end
+
 local function send_package(fd,cmd,pack)
     if not cmd then
         return 
     end
-    skynet.error("send_package:"..string.bytes(pack))
-    local body_size = #pack
-    local version = 0
-    local key = math.rand(0,255)
-    local flag = 1
-    local pNo = 0
-    local package = string.pack("<HBHBBI4s",body_size,version,cmd, key,flag,pNo,pack)
-    skynet.error("send_package:"..string.bytes(package))
-    socket.write(fd, package)
+    socket.write(fd, pack_package(cmd,pack))
 end
 
-local function unpack_package(text)
-    local size = #text
-    if size < HEADSIZE then
-        return nil, text
-    end
-    local s = text:byte(2) * 256 + text:byte(1)
-    if size < s + HEADSIZE then
-        return nil, text
-    end
-
-    return text:sub(1, s + HEADSIZE), text:sub(s + HEADSIZE + 1)
+local function send_request(fd,cmd,body)
+    local str = cjson.encode(body)
+    skynet.error("send_request ", str)
+    send_package(fd,cmd,str)
 end
 
 local function recv_package(fd,last)
-    local result
-    result, last = unpack_package(last)
-    if result then
-        return result, last
+    local cmd,pack
+    cmd,pack,last = unpack_package(last)
+    if cmd then
+        return cmd, pack,last
     end
     local str = socket.read(fd)
     if str == false then
-        return false,last
+        return false,nil,last
     end
     return unpack_package(last .. str)
 end
-
-local session = 0
-
-local function send_request(fd,args)
-    session = session + 1
-    local str = cjson.encode(args)
-    skynet.error("send_request ", str)
-    send_package(fd,args.cmd,str)
-end
-
-
-
-local function print_response(session, args)
-    skynet.error("RESPONSE", session)
-    if args then
-        for k, v in pairs(args) do
-            print(k, v)
-        end
-    end
-end
-
 local function dispatch_package(fd)
     while true do
-        local v
-        v, last = recv_package(fd,last)
-        if v == false then
+        local cmd,pack
+        cmd,pack,last = recv_package(fd,last)
+        if cmd == false then
             skynet.error("dispatch_package recv error")
             break
-        elseif v then
+        elseif cmd then
             skynet.error("dispatch_package recv "..v)
         end
     end
@@ -104,14 +82,14 @@ function CMD.login()
     if status ~= 200 then
         skynet.error("connect loginserver fail")
     else
-        skynet.error("body:"..body)
+        skynet.error("login","body:"..body)
         local ret = cjson.decode(body)
         if ret.code == 0 then
             --print(utils.dump(ret))
             token = ret.token
             local fd = socket.open(ret.game_host, ret.game_port)
             if fd then
-                send_request(fd,{cmd = proto.c2s["auth"], token = token})
+                send_request(fd,proto.c2s["auth"],{cmd = proto.c2s["auth"], token = token})
                 skynet.fork(function() 
                     dispatch_package(fd) 
                 end)

@@ -1,6 +1,7 @@
 local skynet = require "skynet"
 local gateserver = require "gate.mygateserver"
 local netpack = require "skynet.netpack"
+local proto = require "proto.proto"
 
 local watchdog 
 local connection = {}	-- fd -> connection : { fd , client, agent , ip, mode }
@@ -73,10 +74,14 @@ function handler.message(fd, msg, sz)
 	-- recv a package, forward it
 	local c = connection[fd]
 	local agent = c.agent
+
+	local package = skynet.tostring(msg,sz)
+	local cmd,body = proto.unpack(package)
+
 	if agent then
-		skynet.redirect(agent, c.client, "client", 0, msg, sz) -- 客户端代理服务发送client消息
+		skynet.redirect(agent, c.client, "client", 0, cmd,body) -- 客户端代理服务发送client消息
 	else
-		skynet.send(watchdog, "lua", "socket", "data", fd, netpack.tostring(msg, sz))
+		skynet.send(watchdog, "lua", "socket", "data", fd,cmd,body)
 	end
 end
 
