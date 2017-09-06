@@ -9,7 +9,6 @@ local last = ""
 --加密打包
 local function pack_package(cmd,body)
     local pack =  proto.pack(cmd,body)
-    skynet.error("pack_package:"..pack[1])
     skynet.error("pack_package:"..utils.bytes(pack))
     pack = proto.encrypt(pack)
     skynet.error("pack_package:"..utils.bytes(pack))

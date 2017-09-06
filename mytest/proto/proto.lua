@@ -1,4 +1,5 @@
 local skynet = require "skynet"
+local netpack = require "skynet.mynetpack"
 local utils = require "utils.utils"
 local proto = {}
 proto.HEADSIZE = 11
@@ -26,28 +27,17 @@ function proto.unpack(pack)
 end
 --对带有包头的数据进行加密
 function proto.encrypt(pack)
-	skynet.error("proto.encrypt:"..utils.bytes(pack))
 	assert(#pack >= proto.HEADSIZE)
-	local key = pack:byte(6)
-	skynet.error("proto.encrypt:"..key)
-	for i = proto.HEADSIZE + 1,#pack do
-        pack[i] = (pack:byte(i)~key) + key
-    end
+	pack = netpack.encrypt(pack)
 	return pack
 end
 
 --对带有包头的数据进行解密
 function proto.decrypt(pack)
 	assert(#pack >= proto.HEADSIZE)
-	local key = pack:byte(6)
-	for i = proto.HEADSIZE + 1,#pack do
-        pack[i] = (pack:byte(i) - key) ~ key
-    end
+	pack = netpack.decrypt(pack)
 	return pack
 end
-
-
-
 
 proto.c2s = {
 	[10000] = "handshake",
